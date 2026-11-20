@@ -1,2 +1,2 @@
-# generador-rese-as-oohlala
+# generador-resenas-oohlala
 Generador de reseñas Oohlala!
