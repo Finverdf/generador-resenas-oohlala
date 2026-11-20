@@ -1,0 +1,1986 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <!-- viewport-fit=cover activa env(safe-area-inset-*), necesario para que
+       el botón principal no quede bajo la barra inferior de Safari en iPhone. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Ooh la lá! · Déjanos tu reseña</title>
+
+  <!-- ============================================================
+       VISTA PREVIA AL COMPARTIR (WhatsApp, email, redes)
+       ------------------------------------------------------------
+       Las URLs son absolutas a propósito: WhatsApp no resuelve rutas
+       relativas y no mostraría la imagen.
+       PENDIENTE: la dirección es provisional. Al publicar, hay que
+       poner la definitiva en og:url, og:image y twitter:image.
+       ============================================================ -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Ooh la lá!">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:title" content="Ooh la lá! · Déjanos tu reseña">
+  <meta property="og:description" content="Te hemos preparado una propuesta de reseña. Cópiala, edítala si quieres y publícala en Google.">
+  <meta property="og:url" content="https://generador-resenas-oohlala.vercel.app/">
+  <meta property="og:image" content="https://generador-resenas-oohlala.vercel.app/og-oohlala.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="1200">
+  <meta property="og:image:alt" content="Ooh la lá! Centro de estética en A Coruña">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://generador-resenas-oohlala.vercel.app/og-oohlala.png">
+
+  <!-- Favicon: el de oohlala.es (la "O" con los corazones), que ya viene
+       sobre fondo blanco y se lee bien en las pestañas en modo oscuro. -->
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <link rel="icon" type="image/png" sizes="180x180" href="favicon-180.png">
+  <link rel="apple-touch-icon" href="favicon-180.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bellefair&family=Hind:wght@400;500;600;700&display=swap">
+
+  <style>
+    /* ============================================================
+       OOH LA LÁ! — Identidad visual (tomada de oohlala.es)
+       Tipografía: Bellefair en el titular y Hind en el resto, como en
+       la web. Paleta: rosa empolvado de fondo, gris carbón en los
+       botones y el rosa de los corazones del logotipo como acento.
+       Un único contorno exterior agrupa toda la composición; dentro
+       solo llevan borde la reseña editable y los elementos que hay
+       que reconocer como pulsables.
+       ============================================================ */
+    :root {
+      --rosa:               #E7607B;   /* Corazones del logotipo. 3,3:1 sobre blanco: solo acentos, nunca texto */
+      --rosa-soft:          #FAE9E9;   /* Fondo rosado de la web */
+      --rosa-borde:         #F2D2CE;
+      --rosa-glow:          rgba(231, 96, 123, 0.18);
+      --ciruela:            #633D4B;   /* Texto de acento (enlaces de la web): 9,1:1 sobre blanco */
+      --accion:             #333333;   /* Botones: el mismo gris carbón que los de la web */
+      --accion-dark:        #1A181B;   /* Tinta del logotipo */
+
+      --star:               #E0A42B;   /* Solo para las estrellas decorativas */
+
+      --ink:                #333333;
+      --ink-soft:           #5F5A5A;
+      --ink-muted:          #6E6767;   /* 5,5:1 sobre blanco — cumple AA en texto pequeño */
+      --hairline:           #F1DEDE;
+      --hairline-dark:      #E2C9C9;
+      --surface:            #FFFFFF;
+      --surface-2:          #FFF7F7;
+      --page:               #FFFFFF;
+
+      --radius:             14px;
+      --radius-in:          11px;
+      --shell-pad:          9px;
+      --gutter:             11px;
+      --gap:                6px;
+      --maxw:               560px;
+
+      /* Alto fijo del cuadro de la reseña: no cambia al generar otra
+         propuesta ni al cambiar de servicio.
+         Dimensionado para el ancho de móvil MÁS ESTRECHO del tramo (360px),
+         no para 390px: en pantallas estrechas el mismo texto ocupa más
+         líneas. Por debajo de 360px aparece scroll, que es la red de
+         seguridad prevista.
+         Medido con miles de propuestas: la más alta ocupa 9 líneas
+         (214px) a 360px de ancho. Se deja una línea de margen. */
+      --review-h:           236px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Hind", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    .page {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      /* Áreas seguras de iOS: el botón no queda bajo la barra del navegador
+         ni el contenido bajo el notch en horizontal. */
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
+      padding-top: 5px;
+      padding-bottom: calc(9px + env(safe-area-inset-bottom));
+    }
+
+    /* ---------- Contorno exterior único ---------- */
+    .shell {
+      border: 1px solid var(--hairline);
+      border-radius: var(--radius);
+      padding: var(--shell-pad);
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap);          /* ritmo vertical único de la composición */
+      background: var(--surface);
+    }
+
+    /* ---------- Logotipo ---------- */
+    .logo-row {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Logotipo en SVG de 124,7x44,6 (2,8:1): se fija el ancho y la altura
+       la calcula el navegador, así nunca se deforma. */
+    .logo {
+      display: block;
+      width: 110px;
+      height: auto;
+      max-width: 100%;
+    }
+    .logo-slot {
+      display: none;
+      height: 36px;
+      min-width: 96px;
+      border: 1px dashed var(--hairline-dark);
+      border-radius: var(--radius-in);
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-muted);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .logo-slot.show { display: flex; }
+
+    /* ---------- Encabezado ---------- */
+    .intro {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    /* Bellefair solo tiene un peso (400) y es de ojo pequeño: necesita más
+       cuerpo que una sans para leerse con la misma presencia. A 23px el
+       titular entra en una sola línea a 360px de ancho. */
+    h1 {
+      margin: 0;
+      font-family: "Bellefair", Georgia, "Times New Roman", serif;
+      font-size: 23px;
+      line-height: 1.1;
+      font-weight: 400;
+      letter-spacing: -0.005em;
+      text-wrap: balance;
+    }
+    .subtitle {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.32;
+      font-weight: 400;
+      color: var(--ink-soft);
+      max-width: 100%;
+      text-wrap: balance;
+    }
+
+    /* ---------- Selectores (Centro / Servicio) ----------
+       Van uno al lado del otro cuando hay sitio y se apilan en móvil. */
+    .fields {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 7px 14px;
+    }
+    /* La etiqueta va encima de sus dos botones, no al lado: así los dos
+       grupos caben en una sola fila y el bloque deja de ocupar todo
+       el ancho. En pantallas muy estrechas vuelve a apilarse solo. */
+    .field {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .field-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      line-height: 1.2;
+      flex: none;
+    }
+    /* Una sola fila siempre; con dos opciones cabe holgadamente. */
+    .chip-row {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: center;
+      gap: 5px;
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .chip-row::-webkit-scrollbar { display: none; }
+
+    .chip {
+      flex: 0 0 auto;
+      appearance: none;
+      background: var(--surface);
+      border: 1px solid var(--hairline-dark);
+      color: var(--ink-soft);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 9px 12px 8px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+    }
+    .chip:hover {
+      border-color: var(--rosa);
+      color: var(--ciruela);
+      background: var(--rosa-soft);
+    }
+    .chip.active {
+      background: var(--accion);
+      border-color: var(--accion);
+      color: #FFFFFF;
+      font-weight: 600;
+    }
+    .chip.active:hover { background: var(--accion-dark); color: #FFFFFF; }
+
+    /* Servicio: con 18 opciones no caben chips, así que es un desplegable
+       nativo (en móvil abre el selector del sistema) vestido de chip.
+       Con una base de 160px cabe junto a Centro en escritorio. */
+    .field-servicio {
+      flex: 1 1 160px;
+      max-width: 240px;
+    }
+    .select {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235F5A5A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center / 10px 6px;
+      border: 1px solid var(--hairline-dark);
+      color: var(--ink);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1;
+      padding: 9px 30px 8px 13px;
+      border-radius: 999px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    .select:hover {
+      border-color: var(--rosa);
+      background-color: var(--rosa-soft);
+    }
+
+    /* ---------- Cuadro de la reseña (único bloque interior con borde) ---------- */
+    .card {
+      border: 1px solid var(--hairline-dark);
+      border-radius: var(--radius-in);
+      background: var(--surface-2);
+      display: flex;
+      flex-direction: column;
+      transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+    }
+    .card:focus-within {
+      border-color: var(--rosa);
+      box-shadow: 0 0 0 3px var(--rosa-glow);
+      background: var(--surface);
+    }
+    /* Alto fijo: el texto se alinea arriba y el espacio sobrante se deja
+       libre. Si alguien pega un texto excepcionalmente largo aparece
+       scroll, pero nunca se recorta ni cambia el tamaño del cuadro. */
+    .review-editor {
+      width: 100%;
+      height: var(--review-h);
+      display: block;
+      flex: none;
+      border: 0;
+      background: transparent;
+      padding: 9px 10px;
+      margin: 0;
+      resize: none;
+      overflow-y: auto;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 400;
+      color: var(--ink);
+      outline: none;
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .review-editor.swapping { opacity: 0; transform: translateY(3px); }
+    .review-editor::-webkit-scrollbar { width: 6px; }
+    .review-editor::-webkit-scrollbar-thumb {
+      background: var(--hairline-dark);
+      border-radius: 999px;
+    }
+
+    /* Pie fijo del cuadro: no se mueve entre generaciones. */
+    .card-footer {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 4px 7px 4px 10px;
+      border-top: 1px solid var(--hairline);
+      flex: none;
+    }
+    .meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--ink-muted);
+    }
+    .revert-btn {
+      appearance: none;
+      background: none;
+      border: 0;
+      padding: 0;
+      font: inherit;
+      font-size: 12.5px;
+      color: var(--ink-muted);
+      cursor: pointer;
+      text-decoration: underline;
+      visibility: hidden;
+    }
+    .revert-btn.show { visibility: visible; }
+    .revert-btn:hover { color: var(--ink); }
+
+    .regen {
+      appearance: none;
+      border: 1px solid var(--hairline-dark);
+      background: var(--surface);
+      padding: 6px 10px 5px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-soft);
+      cursor: pointer;
+      border-radius: 999px;
+      transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+    }
+    .regen svg {
+      width: 14px; height: 14px; flex: none;
+      margin-top: -1px;
+      transition: transform .45s ease;
+    }
+    .regen:hover {
+      color: var(--ciruela);
+      border-color: var(--rosa);
+      background: var(--rosa-soft);
+    }
+    .regen:hover svg { transform: rotate(140deg); }
+    .regen.spin svg { transform: rotate(360deg); }
+
+    /* ---------- Llamada a las 5 estrellas ---------- */
+    .rating-hint {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--ink-soft);
+      text-align: center;
+      text-wrap: balance;
+    }
+    .rating-hint .stars {
+      color: var(--star);
+      font-size: 11.5px;
+      letter-spacing: 1px;
+      flex: none;
+    }
+
+    /* ---------- Botón principal ---------- */
+    .cta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 15px;
+      background: var(--accion);
+      color: #FFFFFF;
+      border: 1px solid var(--accion);
+      border-radius: var(--radius-in);
+      font-family: inherit;
+      font-size: 15.5px;
+      font-weight: 600;
+      letter-spacing: 0;
+      text-align: center;
+      text-decoration: none;
+      cursor: pointer;
+      transition: background-color .15s ease, transform .1s ease;
+    }
+    .cta svg { width: 18px; height: 18px; flex: none; }
+    .cta:hover {
+      background: var(--accion-dark);
+      border-color: var(--accion-dark);
+    }
+    .cta:active { transform: scale(0.99); }
+
+    /* Sin esto, el atributo hidden no gana a un display:flex. */
+    [hidden] { display: none !important; }
+
+    /* ---------- Paso 2: copiado, ahora pegar ---------- */
+    .go-step {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .go-msg {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      font-size: 14px;
+      font-weight: 500;
+      line-height: 1.3;
+      color: var(--ciruela);
+      text-align: center;
+      text-wrap: balance;
+    }
+    .go-msg strong { font-weight: 700; }
+
+    /* ---------- Confirmación (fuera del módulo, es feedback puntual) ---------- */
+    .status { min-height: 0; padding-top: 8px; }
+
+    .confirm {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 10px 14px;
+      border-radius: var(--radius-in);
+      background: var(--rosa-soft);
+      border: 1px solid var(--rosa-borde);
+      text-align: center;
+      animation: rise .22s ease both;
+    }
+    .confirm.error {
+      background: var(--surface-2);
+      border-color: var(--hairline-dark);
+    }
+    .confirm-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--ciruela);
+    }
+    .confirm.error .confirm-title { color: var(--ink); }
+    .confirm-note { font-size: 13.5px; font-weight: 400; color: var(--ink-soft); }
+
+    .check {
+      width: 17px; height: 17px; flex: none;
+      border-radius: 50%;
+      background: var(--rosa);
+      color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .check svg { width: 10px; height: 10px; }
+    .check svg path {
+      stroke-dasharray: 16;
+      stroke-dashoffset: 16;
+      animation: draw .3s .05s ease forwards;
+    }
+
+    @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    /* ---------- Foco accesible ---------- */
+    :focus-visible { outline: 2px solid var(--rosa); outline-offset: 2px; }
+    .cta:focus-visible { outline-color: var(--rosa); outline-offset: 3px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .001ms !important;
+        transition-duration: .001ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
+
+    /* ---------- Escritorio ---------- */
+    /* Más ancho útil = menos líneas, así que el alto fijo baja. Sigue sin
+       cambiar dentro del breakpoint. */
+    @media (min-width: 640px) {
+      :root {
+        --shell-pad: 16px;
+        --gutter: 18px;
+        /* En escritorio la reseña se lee a 16px, así que cada línea es más
+           alta que en móvil, pero la columna ancha necesita menos líneas.
+           Medido: la propuesta más alta ocupa 173px. Se deja una línea
+           de margen. */
+        --review-h: 200px;
+      }
+      .page { padding-block: 30px 27px; }
+      .shell { gap: 11px; }
+      .logo { width: 150px; }
+      h1 { font-size: 30px; }
+      .subtitle { font-size: 14px; }
+      .review-editor { font-size: 16px; line-height: 1.55; padding: 12px 14px; }
+      .chip { font-size: 13.5px; padding: 9px 14px 8px; }
+      .select { font-size: 13.5px; }
+    }
+  </style>
+</head>
+<body>
+
+<main class="page">
+  <div class="shell">
+
+    <div class="logo-row">
+      <!-- Logotipo oficial de oohlala.es (oohlala-logo.svg, junto a este index.html).
+           width/height reservan el espacio antes de cargar: la página no da saltos. -->
+      <img class="logo" src="oohlala-logo.svg" width="1247" height="446"
+           alt="Ooh la lá! Centro de estética"
+           onerror="this.style.display='none';document.getElementById('logoSlot').classList.add('show');">
+      <div class="logo-slot" id="logoSlot" aria-hidden="true">Ooh la lá!</div>
+    </div>
+
+    <header class="intro">
+      <h1>¿Nos regalas una reseña en Google?</h1>
+      <p class="subtitle">Aquí tienes una propuesta. Cámbiala a tu manera antes de publicarla.</p>
+    </header>
+
+    <div class="fields">
+      <div class="field">
+        <span class="field-label" id="ubicacionLabel">Centro</span>
+        <div class="chip-row" id="ubicacionGroup" role="radiogroup" aria-labelledby="ubicacionLabel">
+          <button type="button" class="chip active" data-value="medico" role="radio" aria-checked="true">Médico Rodríguez</button>
+          <button type="button" class="chip" data-value="marchesi" role="radio" aria-checked="false">Alcalde Marchesi</button>
+        </div>
+      </div>
+      <div class="field field-servicio">
+        <!-- Las opciones se generan desde SERVICIOS. autocomplete="off" evita
+             que el navegador restaure al recargar una opción distinta de la
+             que el script tiene en memoria. -->
+        <label class="field-label" for="servicio">Servicio</label>
+        <select id="servicio" class="select" autocomplete="off"></select>
+      </div>
+    </div>
+
+    <div class="card">
+      <textarea id="review" class="review-editor"
+                aria-label="Texto de la reseña, editable" spellcheck="true"
+                placeholder="Preparando una propuesta…"></textarea>
+      <div class="card-footer">
+        <span class="meta">
+          <span id="wordCount">0 palabras</span>
+          <button type="button" class="revert-btn" id="revertBtn">Restablecer</button>
+        </span>
+        <button type="button" class="regen" id="regen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>
+          </svg>
+          Generar otra
+        </button>
+      </div>
+    </div>
+
+    <p class="rating-hint">
+      <span class="stars" aria-hidden="true">★★★★★</span>
+      Y si te animas, 5 estrellas. ¡Gracias!
+    </p>
+
+    <!-- Navega en la MISMA pestaña. Al ser un <a> con href real, si el JS
+         fallara el clic seguiría llevando al formulario de Google. -->
+    <a class="cta" id="cta" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      <span>Copiar reseña y escribirla en Google</span>
+    </a>
+
+    <!-- Paso 2: aparece tras copiar. Sustituye al botón anterior para que
+         solo haya una acción disponible en cada momento. -->
+    <div class="go-step" id="goStep" hidden>
+      <p class="go-msg">
+        <span class="check" aria-hidden="true"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3 4.6 9 10 3.2"/></svg></span>
+        <span><strong>Reseña copiada.</strong> Ahora pégala en Google.</span>
+      </p>
+      <a class="cta" id="ctaGo" href="#">
+        <span>Ir a Google</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+        </svg>
+      </a>
+    </div>
+
+  </div>
+
+  <div class="status" id="status" aria-live="polite"></div>
+</main>
+
+<script>
+/* ================================================================
+   1. CONFIGURACIÓN — ENLACE DIRECTO DE RESEÑAS
+   ----------------------------------------------------------------
+   ÚNICO VALOR QUE HAY QUE RELLENAR ANTES DE PUBLICAR.
+
+   Sácalo del Perfil de Empresa de Google de cada centro:
+     Leer reseñas  ->  Conseguir más reseñas  ->  copiar enlace
+   Tiene esta forma:
+     https://g.page/r/XXXXXXXXXXXXXX/review
+
+   PENDIENTE: oohlala.es no publica esos enlaces, así que de momento
+   hay una búsqueda en Google Maps de cada centro. Lleva a la ficha,
+   pero el cliente tiene que buscar él mismo "Escribir una reseña".
+   Los enlaces de Maps de la web tampoco sirven: apuntan a la calle,
+   no a la ficha del negocio.
+   ================================================================ */
+const UBICACIONES = {
+  medico: {
+    nombre: "Médico Rodríguez",
+    direccion: "Médico Rodríguez, 12/14, 15004 A Coruña",
+    reviewUrl: "https://www.google.com/maps/search/?api=1&query=Ooh+La+La+M%C3%A9dico+Rodr%C3%ADguez+12+A+Coru%C3%B1a"
+  },
+  marchesi: {
+    nombre: "Alcalde Marchesi",
+    direccion: "Alcalde Marchesi, 10/12, 15006 A Coruña",
+    reviewUrl: "https://www.google.com/maps/search/?api=1&query=Ooh+La+La+Alcalde+Marchesi+10+A+Coru%C3%B1a"
+  }
+};
+
+/* Siempre se arranca en Médico Rodríguez. La elección NO se guarda en
+   ningún sitio: cada visita empieza en el centro por defecto. */
+const UBICACION_INICIAL = "medico";
+let ubicacionActual = UBICACION_INICIAL;
+
+/** Formulario de reseñas del perfil seleccionado. */
+function urlDestino() {
+  return UBICACIONES[ubicacionActual].reviewUrl;
+}
+
+/* ================================================================
+   2. GENERADOR DE PROPUESTAS (local, sin API)
+   ----------------------------------------------------------------
+   Cada propuesta sale de una VOZ: una plantilla con su propio tono
+   (cercano, formal, espontáneo, emotivo, directo, con humor...), su
+   estructura y sus aspectos (trato, instalaciones, organización,
+   profesionales, resultados, experiencia). Así cada reseña parece
+   escrita por una persona distinta. Todas tienen la misma extensión
+   intermedia (LENGTH_BAND).
+
+   El servicio elegido entra en la voz por tres vías:
+     · s.lo  — el servicio con artículo. Va siempre detrás de una
+               preposición o de "me hice" ("fui por la manicura",
+               "lo del masaje"), para no depender de su género y número.
+     · s.res — cómo le fue al cliente, en primera persona.
+     · s.pro — cómo trabajan ese servicio.
+   Con "Varios servicios", s.lo es null y s.res / s.pro son genéricos.
+
+   Antes de enseñar una propuesta se descartan las que:
+     · nombran la marca o "centro de estética" más de una vez;
+     · repiten una palabra de 6 letras o más (salvo PALABRAS_COMUNES);
+     · tienen dos frases que empiezan por la misma palabra;
+     · no nombran el servicio elegido.
+   Y se evitan las frases que ya salieron en las últimas propuestas.
+
+   Reglas de redacción para cualquier frase nueva:
+     · Primera persona SIN género: nada de "encantada", "contenta",
+       "clienta"... Las escribe gente de todo tipo.
+     · Ningún nombre del equipo ni femeninos para referirse a él
+       ("las chicas"): cambia con el tiempo y no hace falta.
+     · Lo que se diga de un servicio sale de su página en oohlala.es y
+       se cuenta como experiencia, sin prometer resultados.
+
+   Punto único de sustitución futura por IA:
+   generateReview() -> hoy llama a generateReviewLocal()
+                       mañana puede llamar a generateReviewWithAI()
+   ================================================================ */
+
+const pick  = (a) => a[Math.floor(Math.random() * a.length)];
+const maybe = (p) => Math.random() < p;
+
+function sentences(parts) {
+  return parts.filter(Boolean).map(s => s.trim()).filter(Boolean).join(" ");
+}
+
+/* Contracciones del español: "de el" -> "del", "a el" -> "al". */
+function contract(text) {
+  return text
+    .replace(/\bde el\b/g, "del")
+    .replace(/\bDe el\b/g, "Del")
+    .replace(/\ba el\b/g, "al")
+    .replace(/\bA el\b/g, "Al");
+}
+
+/* Ninguna reseña debe llevar punto y coma: en una opinión escrita por un
+   cliente suena impostado. Las frases del generador ya están redactadas sin
+   él, pero esto es la red de seguridad por si se añade alguna nueva: se
+   convierte en punto y se recupera la mayúscula. */
+const PUNTO_Y_COMA = String.fromCharCode(59);
+function sinPuntoYComa(text) {
+  if (text.indexOf(PUNTO_Y_COMA) === -1) return text;
+  return text
+    .replace(new RegExp(PUNTO_Y_COMA + "\\s+(\\p{Ll})", "gu"),
+             (m, letra) => ". " + letra.toUpperCase())
+    .replace(new RegExp(PUNTO_Y_COMA, "g"), ".");
+}
+
+function countWords(t) {
+  const s = t.trim();
+  return s ? s.split(/\s+/).length : 0;
+}
+
+/* Primera letra en minúscula, para encajar una frase completa detrás de
+   una coma ("Me hice el masaje, y salí sin tensiones..."). No toca siglas
+   como INDIBA o LPG. */
+function minus(t) {
+  return t.replace(/^(¡?)(\p{Lu})(?=\p{Ll})/u, (m, signo, letra) => signo + letra.toLowerCase());
+}
+
+/* --- Marca ---
+   Casi siempre como la escribe la gente ("Ooh La La") y a veces como la
+   firma la web. Solo algunas voces la nombran, y cada una en un sitio
+   distinto: al principio, en medio o al despedirse. */
+const marca = () => maybe(0.75) ? "Ooh La La" : "Ooh la lá";
+
+/* --- Denominación del negocio (palabras clave) ---
+   "centro de estética" es la habitual y "centro de belleza" aparece de
+   forma ocasional. centroFinal() puede añadir "en A Coruña", así que solo
+   se usa al final de una frase o antes de una coma. */
+function centro() {
+  return Math.random() < 0.85 ? "centro de estética" : "centro de belleza";
+}
+function centroFinal() {
+  return centro() + (maybe(0.4) ? " en A Coruña" : "");
+}
+const donde = () => maybe(0.5) ? " en A Coruña" : "";
+
+const resultado   = (s) => pick(s.res);
+const profesional = (s) => pick(s.pro);
+
+/* ================================================================
+   SERVICIOS
+   Mismo orden y grupos que el menú de oohlala.es. Cada servicio aporta:
+     · lo    — el servicio con artículo (ver cabecera de la sección).
+     · res   — resultados contados como experiencia.
+     · pro   — cómo trabajan ese servicio.
+     · busca — lo que alguien buscaría en Google ("Si buscas ___").
+     · clave — cómo se reconoce que el texto habla de este servicio.
+   ================================================================ */
+const SERVICIOS = {
+  general: {
+    nombre: "Varios servicios", lo: null, busca: null, clave: null,
+    res: [
+      "Los resultados se notan desde el primer día.",
+      "Siempre salgo con justo lo que había pedido.",
+      "Lo que me hacen dura y se ve.",
+      "Cada vez que salgo, me miro al espejo y sonrío.",
+      "Nunca me he ido con un resultado a medias.",
+      "Los resultados hablan por sí solos.",
+      "Se nota la diferencia, y no solo lo digo yo.",
+      "Todo lo que me he hecho ha quedado impecable.",
+      "Siempre me voy con la sensación de haber acertado.",
+      "Los resultados están a la altura, y de sobra.",
+      "Me veo mejor y lo noto cada día.",
+      "Todo queda tal y como lo había imaginado."
+    ],
+    pro: [
+      "Saben perfectamente lo que hacen y te lo explican todo.",
+      "Te aconsejan con honestidad, sin venderte nada que no necesites.",
+      "Trabajan con buenos productos y aparatología de primera.",
+      "Se nota la experiencia en cada detalle.",
+      "Te escuchan antes de empezar y lo adaptan a lo que necesitas.",
+      "Cuidan muchísimo la higiene.",
+      "Se nota que siguen formándose.",
+      "Te lo explican todo sin tecnicismos.",
+      "No dejan nada al azar.",
+      "Te asesoran como lo harían con alguien de su familia."
+    ]
+  },
+
+  laser: {
+    nombre: "Depilación láser", grupo: "Tratamientos",
+    lo: "la depilación láser", busca: "depilación láser", clave: /láser/i,
+    res: [
+      "Sesión a sesión el vello ha ido desapareciendo, y se nota de verdad.",
+      "Es prácticamente indoloro, algo que no esperaba.",
+      "En las zonas tratadas ya casi no tengo vello.",
+      "He olvidado lo que es depilarse cada semana.",
+      "Las sesiones son rápidas y apenas se notan.",
+      "Desde las primeras sesiones noté que el vello iba a menos.",
+      "¡Adiós a la cuchilla, por fin!",
+      "La piel está mucho más suave y cuidada.",
+      "Pensaba que iba a doler y apenas se nota.",
+      "Ya no me preocupa el vello antes de un plan de playa.",
+      "La diferencia con depilarme por mi cuenta es enorme."
+    ],
+    pro: [
+      "Antes de empezar me hicieron una valoración y me explicaron cuántas sesiones iba a necesitar.",
+      "Adaptan cada sesión a tu piel y a tu vello.",
+      "Te dan todas las indicaciones, como evitar el sol antes y después.",
+      "Trabajan con un láser de diodo muy potente y lo manejan con mucha soltura.",
+      "Te explican todo con claridad y resuelven cualquier duda.",
+      "Ajustan la potencia en cada sesión con mucho criterio.",
+      "Te explican los cuidados entre sesiones.",
+      "Te dicen con claridad qué esperar en cada zona.",
+      "Revisan cómo responde tu piel antes de cada sesión."
+    ]
+  },
+
+  indiba: {
+    nombre: "INDIBA", grupo: "Tratamientos",
+    lo: "el INDIBA", busca: "INDIBA", clave: /INDIBA/,
+    res: [
+      "Noto la piel más firme y con mucha mejor textura.",
+      "La piel ha ganado firmeza y luminosidad, y se ve a simple vista.",
+      "El calor es de lo más agradable, casi da pena que termine la sesión.",
+      "Sesión a sesión la piel está más firme y cuidada.",
+      "Se nota el cambio en la piel, y no solo lo noto yo.",
+      "Me sorprendió lo rápido que empecé a notar la diferencia.",
+      "Es de esos tratamientos que se disfrutan y además funcionan.",
+      "Noto la piel más tersa.",
+      "Salgo con una sensación de bienestar enorme.",
+      "Lo noto sobre todo en la textura de la piel."
+    ],
+    pro: [
+      "Trabajan con equipos de primera y ajustan la intensidad en cada sesión.",
+      "Antes de empezar valoran tu piel y te proponen una pauta pensada para ti.",
+      "Controlan el calor en todo momento para que estés a gusto.",
+      "Van revisando la evolución y ajustan la pauta cuando hace falta.",
+      "Te explican cómo funciona la radiofrecuencia sin tecnicismos.",
+      "Te cuentan qué vas a notar en cada fase.",
+      "Adaptan el tratamiento a la zona que quieres trabajar.",
+      "Lo combinan con otros tratamientos si te conviene."
+    ]
+  },
+
+  zionic: {
+    nombre: "Zionic", grupo: "Tratamientos",
+    lo: "el Zionic", busca: "Zionic", clave: /Zionic/,
+    res: [
+      "Noto la piel más lisa y el contorno mucho más definido.",
+      "La ropa me sienta mejor, y eso lo dice todo.",
+      "Los resultados se notan desde las primeras sesiones.",
+      "La piel de naranja ha mejorado bastante.",
+      "Se nota en la textura de la piel y en el contorno.",
+      "Me ha sorprendido para bien, la verdad.",
+      "Noto la piel más firme en las zonas trabajadas.",
+      "El cambio en el contorno es evidente.",
+      "Me veo mejor, y el espejo lo confirma."
+    ],
+    pro: [
+      "Te hacen una valoración previa y te proponen un plan de sesiones a tu medida.",
+      "Te explican bien cómo funciona y lo combinan con otros tratamientos si te conviene.",
+      "Te van guiando sesión a sesión.",
+      "Te dicen con honestidad qué puedes esperar.",
+      "Ajustan cada sesión según cómo vas respondiendo.",
+      "Te explican qué zonas conviene trabajar.",
+      "Hacen seguimiento de cómo evoluciona cada zona."
+    ]
+  },
+
+  lpg: {
+    nombre: "LPG", grupo: "Tratamientos",
+    lo: "el LPG", busca: "LPG", clave: /LPG/,
+    res: [
+      "La celulitis ha mejorado mucho y la piel está más lisa.",
+      "Noto las piernas mucho más ligeras.",
+      "La piel de naranja se ha suavizado, y se nota al tacto.",
+      "Se nota en cómo me queda la ropa.",
+      "Sesión a sesión la piel está más lisa y más firme.",
+      "No esperaba notar tanto cambio en tan pocas sesiones.",
+      "La piel se ve más uniforme.",
+      "Se nota al tacto y a la vista.",
+      "El contorno se ha ido afinando poco a poco."
+    ],
+    pro: [
+      "Antes de empezar te valoran y te explican qué zonas trabajar y cómo.",
+      "Adaptan cada sesión a tu objetivo.",
+      "Dominan la técnica y la adaptan a cada persona.",
+      "Hacen un seguimiento de la evolución y ajustan el plan cuando hace falta.",
+      "Te explican el porqué de cada paso.",
+      "Ajustan la intensidad a lo que toleras.",
+      "Te dan pautas para complementarlo en casa.",
+      "Lo combinan con otros tratamientos si te viene bien."
+    ]
+  },
+
+  wishpro: {
+    nombre: "Wish Pro", grupo: "Tratamientos",
+    lo: "el Wish Pro", busca: "Wish Pro", clave: /Wish Pro/,
+    res: [
+      "La piel queda luminosa, hidratada y con una textura increíble.",
+      "Desde la primera sesión noto la piel más luminosa y uniforme.",
+      "Salgo con la piel jugosa y llena de luz.",
+      "La piel está más hidratada y mucho más bonita.",
+      "Me han preguntado varias veces qué me había hecho en la cara.",
+      "Mi piel no ha vuelto a ser la misma, en el buen sentido.",
+      "El tono de la piel se ve mucho más uniforme.",
+      "La textura ha mejorado una barbaridad.",
+      "Es la piel más bonita que he tenido en años."
+    ],
+    pro: [
+      "Antes de empezar te valoran la piel y adaptan el protocolo a lo que necesitas.",
+      "Te explican cada paso y te aconsejan cómo cuidar la piel en casa.",
+      "Conocen muy bien la piel y el tratamiento.",
+      "Ajustan el tratamiento a tu tipo de piel con mucho criterio.",
+      "No es un facial genérico: lo adaptan a ti.",
+      "Se toman su tiempo en cada paso.",
+      "Te recomiendan la pauta que mejor encaja con tu piel."
+    ]
+  },
+
+  presoterapia: {
+    nombre: "Presoterapia", grupo: "Tratamientos",
+    lo: "la presoterapia", busca: "presoterapia", clave: /presoterapia/i,
+    res: [
+      "Salgo con las piernas ligerísimas.",
+      "La sensación de ligereza es inmediata.",
+      "Noto mucho menos la retención de líquidos.",
+      "Es una presión suave, nada molesta, y las piernas lo agradecen.",
+      "Después de un día largo de pie, es lo mejor que hay.",
+      "Las piernas pesadas son ya cosa del pasado.",
+      "Es un rato de descanso total.",
+      "Noto las piernas descansadas durante días.",
+      "Me ayuda muchísimo con la sensación de pesadez."
+    ],
+    pro: [
+      "Te valoran antes de empezar y adaptan cada sesión a lo que necesitas.",
+      "Ajustan la presión para que estés a gusto.",
+      "Lo combinan con otros tratamientos cuando conviene.",
+      "Hacen un buen seguimiento de cómo vas.",
+      "Te explican cómo funciona antes de empezar.",
+      "Te preparan con todo el cuidado del mundo.",
+      "Ajustan la duración a lo que necesitas."
+    ]
+  },
+
+  maderoterapia: {
+    nombre: "Maderoterapia", grupo: "Tratamientos",
+    lo: "la maderoterapia", busca: "maderoterapia", clave: /maderoterapia/i,
+    res: [
+      "Es intensa, pero noto la piel más lisa y el cuerpo más ligero.",
+      "La textura de la piel ha cambiado por completo.",
+      "Noto la piel más firme y salgo sin tensiones.",
+      "Se nota en la piel y en lo suelto que queda el cuerpo.",
+      "Los resultados se notan sesión a sesión.",
+      "Al principio impresiona, pero merece muchísimo la pena.",
+      "La piel se ve más lisa y uniforme.",
+      "Salgo con el cuerpo suelto y la piel más tersa.",
+      "El contorno se nota más definido."
+    ],
+    pro: [
+      "Ajustan la intensidad a lo que aguantas.",
+      "Saben exactamente cómo trabajar cada zona.",
+      "Te hacen una valoración inicial y adaptan las sesiones a tu objetivo.",
+      "Se nota la técnica en cada movimiento.",
+      "Te explican todo el proceso antes de empezar.",
+      "Te avisan de cómo lo vas a notar y van ajustando.",
+      "Combinan muy bien fuerza y delicadeza."
+    ]
+  },
+
+  manicura: {
+    nombre: "Manicura", grupo: "Estética",
+    lo: "la manicura", busca: "una buena manicura", clave: /manicura/i,
+    res: [
+      "Me dura impecable durante semanas.",
+      "Las uñas quedan perfectas y el esmaltado aguanta muchísimo.",
+      "Salgo con unas manos preciosas.",
+      "El esmaltado dura semanas sin levantarse ni perder brillo.",
+      "Mis uñas nunca habían estado tan bonitas.",
+      "Más de una vez me han preguntado dónde me hago las uñas.",
+      "El acabado es tan limpio que parece de revista.",
+      "Las manos me quedan suaves durante días.",
+      "El color queda tal cual lo había imaginado.",
+      "Ni un desconchón en semanas."
+    ],
+    pro: [
+      "Trabajan con marcas como CND y se nota la calidad.",
+      "Cuidan las cutículas con mucha paciencia.",
+      "Trabajan con muchísimo cuidado y precisión, uña por uña.",
+      "Te aconsejan el color y el diseño que mejor te va.",
+      "Se nota la técnica en cada detalle, desde la limpieza hasta el acabado.",
+      "Preparan la uña con muchísimo mimo antes de esmaltar.",
+      "Te dejan elegir con calma y te asesoran sin prisa.",
+      "El limado y la forma, perfectos."
+    ]
+  },
+
+  pedicura: {
+    nombre: "Pedicura", grupo: "Estética",
+    lo: "la pedicura", busca: "una buena pedicura", clave: /pedicura/i,
+    res: [
+      "Los pies quedan suaves y las uñas perfectas durante semanas.",
+      "Salgo con unos pies que parecen otros.",
+      "El esmaltado aguanta perfecto durante semanas.",
+      "El masaje del final es una maravilla.",
+      "Por fin me pongo sandalias sin pensarlo dos veces.",
+      "Los pies quedan suavísimos.",
+      "Las durezas, historia.",
+      "Salgo andando como en una nube.",
+      "Las uñas quedan perfectas para el verano."
+    ],
+    pro: [
+      "Te quitan las durezas y trabajan las cutículas con mucha delicadeza.",
+      "Trabajan con productos de primera.",
+      "Trabajan con muchísima precisión.",
+      "Lo hacen todo con calma y muy bien.",
+      "Cuidan la higiene al máximo, algo fundamental en una pedicura.",
+      "Se toman su tiempo con cada pie.",
+      "Te asesoran sobre cómo cuidar los pies entre visitas."
+    ]
+  },
+
+  facial: {
+    nombre: "Tratamiento facial", grupo: "Estética",
+    lo: "el tratamiento facial", busca: "un buen tratamiento facial", clave: /facial/i,
+    res: [
+      "La piel queda limpia, luminosa y con una sensación de frescura increíble.",
+      "Salgo con la piel radiante y súper hidratada.",
+      "Noto la piel más luminosa y con mucho mejor tono.",
+      "La piel queda limpísima, suave y llena de luz.",
+      "Hacía años que no tenía la piel así.",
+      "Al día siguiente la piel sigue espectacular.",
+      "La piel se nota limpia de verdad, sin impurezas.",
+      "El tono queda mucho más uniforme.",
+      "Mi piel lo agradece durante días."
+    ],
+    pro: [
+      "Te analizan la piel y adaptan cada paso a lo que necesita.",
+      "Trabajan con cosmética de primera, como Phyt's.",
+      "La limpieza es profunda y muy cuidadosa, sin prisas.",
+      "Te aconsejan sobre cómo cuidar la piel en casa.",
+      "El masaje es una maravilla.",
+      "Cada paso tiene su porqué, y te lo explican.",
+      "Los productos huelen de maravilla y se nota su calidad."
+    ]
+  },
+
+  pestanas: {
+    nombre: "Pestañas", grupo: "Estética",
+    lo: "las pestañas", busca: "unas pestañas bonitas", clave: /pestañas/i,
+    res: [
+      "El resultado es natural y la mirada queda mucho más expresiva.",
+      "Me duran perfectas semanas.",
+      "Quedan naturales, bonitas y muy favorecedoras.",
+      "Me ahorro un montón de tiempo cada mañana.",
+      "Justo el efecto que quería, ni más ni menos.",
+      "Todo el mundo me pregunta si son mías.",
+      "La mirada se abre muchísimo.",
+      "Me levanto con la mirada hecha.",
+      "Aguantan perfectas hasta el relleno."
+    ],
+    pro: [
+      "Te aconsejan el efecto que mejor te va, con muy buen ojo.",
+      "Trabajan con muchísima precisión y delicadeza.",
+      "Todo queda limpio y muy cuidado.",
+      "Adaptan el largo y la densidad a lo que buscas.",
+      "Se toman su tiempo para que quede perfecto.",
+      "Te explican cómo cuidarlas para que duren más.",
+      "Trabajan pestaña a pestaña, con muchísima paciencia."
+    ]
+  },
+
+  cejas: {
+    nombre: "Cejas con henna", grupo: "Estética",
+    lo: "las cejas con henna", busca: "cejas con henna", clave: /cejas/i,
+    res: [
+      "Quedan definidas, pobladas y muy naturales.",
+      "Parecen maquilladas, pero con un acabado de lo más natural.",
+      "El efecto dura bastante.",
+      "Nunca había tenido una forma tan bonita.",
+      "Me han cambiado la cara, de verdad.",
+      "Por fin me olvido de rellenarlas cada mañana.",
+      "Me enmarcan la cara de una forma preciosa.",
+      "El tono es perfecto para mi pelo.",
+      "Ya no necesito maquillarlas."
+    ],
+    pro: [
+      "Antes de nada te hacen un diseño pensado para tu cara.",
+      "Se toman su tiempo con el diseño y aciertan con la forma y la intensidad.",
+      "Te aconsejan con criterio sobre el tono y el grosor.",
+      "Trabajan con productos de calidad y con mucha precisión.",
+      "Te enseñan el diseño antes de aplicar nada.",
+      "Te explican cómo cuidarlas para que el efecto dure."
+    ]
+  },
+
+  cera: {
+    nombre: "Depilación con cera", grupo: "Estética",
+    lo: "la depilación con cera", busca: "depilación con cera", clave: /\bcera\b/i,
+    res: [
+      "Apenas molesta y la piel queda perfecta.",
+      "El resultado dura muchísimo y la piel queda suave.",
+      "Quita hasta el vello más corto.",
+      "El vello tarda bastante en volver.",
+      "Es la que menos me ha molestado nunca.",
+      "Nada de tirones ni de irritaciones.",
+      "La piel queda suave durante días.",
+      "Rápido, limpio y sin sufrir.",
+      "Las rojeces desaparecen en un rato."
+    ],
+    pro: [
+      "Tienen una técnica que reduce mucho las molestias.",
+      "Usan ceras de calidad y cuidan la piel antes y después.",
+      "Lo hacen rápido, con cuidado y sin dejarse nada.",
+      "Tienen muy buena mano.",
+      "Te preparan la piel antes y la calman después.",
+      "Trabajan con una rapidez y una limpieza tremendas."
+    ]
+  },
+
+  hilo: {
+    nombre: "Depilación con hilo", grupo: "Estética",
+    lo: "la depilación con hilo", busca: "depilación con hilo", clave: /\bhilo\b/i,
+    res: [
+      "El resultado es limpio y muy definido.",
+      "Queda un acabado natural, justo como me gusta.",
+      "El rostro queda perfecto sin irritar la piel.",
+      "Dura bastante más de lo que esperaba.",
+      "Salgo sin apenas rojeces.",
+      "Las cejas quedan con una forma preciosa.",
+      "Queda todo limpio, hasta el vello más fino.",
+      "El acabado es perfecto incluso en las zonas más delicadas."
+    ],
+    pro: [
+      "Tienen una precisión increíble.",
+      "Lo hacen con muchísimo cuidado y en un momento.",
+      "La piel ni se entera.",
+      "Saben exactamente qué quitar y qué dejar.",
+      "Trabajan rápido y con mucha delicadeza.",
+      "Cuidan muchísimo la forma del rostro."
+    ]
+  },
+
+  masaje: {
+    nombre: "Masaje", grupo: "Estética",
+    lo: "el masaje", busca: "un buen masaje", clave: /masaje/i,
+    res: [
+      "Salí sin tensiones y con el cuerpo mucho más suelto.",
+      "Las contracturas se soltaron y esa noche dormí de maravilla.",
+      "Salgo con la espalda y la cabeza mucho más ligeras.",
+      "El cuerpo lo agradece al momento.",
+      "Con las velas, la música y los aromas, desconectas por completo.",
+      "Una hora que se pasa volando.",
+      "Esa semana me dolió mucho menos la espalda.",
+      "Salí con la cabeza despejada.",
+      "Las tensiones de toda la semana, fuera."
+    ],
+    pro: [
+      "Te preguntan qué necesitas y se centran en tus tensiones.",
+      "Tienen muy buenas manos.",
+      "Saben encontrar cada contractura.",
+      "Adaptan la presión a lo que necesitas en cada momento.",
+      "Combinan presión y suavidad de maravilla.",
+      "Te preguntan durante el masaje si la presión es la adecuada.",
+      "Saben perfectamente qué zonas necesitan más trabajo."
+    ]
+  },
+
+  peeling: {
+    nombre: "Peeling corporal", grupo: "Estética",
+    lo: "el peeling corporal", busca: "un buen peeling corporal", clave: /peeling/i,
+    res: [
+      "La piel queda suave, limpia y fresquísima.",
+      "Salí con la piel suavísima.",
+      "La piel queda perfecta para broncearse.",
+      "Noto la piel más limpia y más uniforme.",
+      "Es como estrenar piel.",
+      "La piel queda luminosa y renovada.",
+      "Se nota la piel suave al tacto durante días.",
+      "La crema de después se absorbe de maravilla."
+    ],
+    pro: [
+      "Te explican cómo preparar la piel y cómo cuidarla después.",
+      "Lo hacen con mucho cuidado y con productos de calidad.",
+      "Adaptan el tratamiento a tu piel.",
+      "Te aconsejan muy bien para combinarlo con otros tratamientos.",
+      "Te explican qué productos usan y para qué.",
+      "Te recomiendan cuándo repetirlo."
+    ]
+  },
+
+  bronceado: {
+    nombre: "Bronceado caña de azúcar", grupo: "Estética",
+    lo: "el bronceado de caña de azúcar", busca: "un bronceado natural", clave: /bronceado/i,
+    res: [
+      "El color queda natural y uniforme, sin tomar el sol.",
+      "Queda un tono precioso y nada naranja.",
+      "El color dura varios días.",
+      "Un color de vacaciones sin exponerte al sol.",
+      "Nadie se creyó que no había ido a la playa.",
+      "El tono va cogiendo color en las horas siguientes y queda precioso.",
+      "El acabado es uniforme, sin marcas raras.",
+      "Llegué al evento con un tono precioso."
+    ],
+    pro: [
+      "Te explican cómo prepararte y cómo cuidarlo para que dure más.",
+      "Lo aplican rápido y con muy buena mano.",
+      "Te aconsejan el tono que mejor te va.",
+      "En un momento está hecho.",
+      "Te dicen cómo exfoliar e hidratar para que dure.",
+      "Te preparan con muchísimo cuidado."
+    ]
+  }
+};
+
+/* Siempre se arranca en "Varios servicios", como el centro: la elección
+   no se guarda en ningún sitio. */
+const SERVICIO_INICIAL = "general";
+let servicioActual = SERVICIO_INICIAL;
+
+/* ================================================================
+   VOCES
+   Cada una es una persona distinta. Todas nombran el servicio cuando lo
+   hay (rama s.lo) y tienen una alternativa para "Varios servicios".
+   ================================================================ */
+const VOCES = [
+
+  // V01 · primera visita, espontánea
+  { id: "V01", build: (s) => sentences([
+      pick(["Primera vez que voy y ya tengo la siguiente cita.", "Era mi primera vez y no será la última.", "Fui hace poco por primera vez y pienso repetir."]),
+      s.lo
+        ? pick([`Iba por ${s.lo}, sin muchas expectativas, y me sorprendió para bien.`, `Reservé para ${s.lo} y salí con ganas de probar más cosas.`])
+        : pick(["No sabía muy bien qué esperar y me sorprendió para bien.", "Iba sin muchas expectativas y salí con ganas de probarlo todo."]),
+      resultado(s),
+      pick(["El local es acogedor y te atienden con mucho cariño.", "Te atienden con una amabilidad que da gusto.", "Y el trato, de diez desde que entras por la puerta."])
+    ])
+  },
+
+  // V02 · de toda la vida, cercana
+  { id: "V02", build: (s) => sentences([
+      pick([`Llevo años yendo a ${marca()} y sigo igual de fan.`, `Después de tantos años yendo a ${marca()}, sigo saliendo feliz.`, `Años yendo a ${marca()} y ni me planteo cambiar.`]),
+      s.lo ? pick([`Ahora voy sobre todo por ${s.lo}.`, `Últimamente voy por ${s.lo}.`]) : "Me he hecho de todo y nunca me han fallado.",
+      resultado(s),
+      maybe(0.6) ? profesional(s) : "",
+      pick(["Es de esos sitios donde te conocen por tu nombre.", "Te conocen por tu nombre y saben cómo te gustan las cosas.", "Se acuerdan de todo, hasta de lo que les contaste la última vez."])
+    ])
+  },
+
+  // V03 · formal
+  { id: "V03", build: (s) => sentences([
+      pick(["Quisiera destacar la profesionalidad de todo el equipo.", "Me gustaría dejar constancia de una experiencia excelente.", "Mi valoración no puede ser más positiva."]),
+      s.lo ? `En mi caso, acudí para ${s.lo}.` : `He acudido en varias ocasiones a este ${centro()}.`,
+      profesional(s),
+      resultado(s),
+      pick(["El trato ha sido en todo momento amable y cercano.", "La atención, en todo momento, amable y cercana."]),
+      pick(["Lo recomiendo sin reservas.", "Un servicio excelente en todos los sentidos.", "Muy recomendable."])
+    ])
+  },
+
+  // V04 · directa, casi telegráfica
+  { id: "V04", build: (s) => sentences([
+      pick(["Puntualidad, limpieza y muchísima profesionalidad.", "Trato excelente, cero esperas y todo impecable.", "Cercanía, buen hacer y cero prisas."]),
+      s.lo ? pick([`Fui para ${s.lo}.`, `Probé ${s.lo}.`]) : "Repito siempre.",
+      resultado(s),
+      profesional(s),
+      pick(["El local, precioso.", "El trato, cercanísimo.", "Todo muy limpio."]),
+      pick(["Y pedir cita por WhatsApp es comodísimo.", "Además abren hasta las nueve entre semana, algo que se agradece.", "No se puede pedir más."])
+    ])
+  },
+
+  // V05 · emotiva
+  { id: "V05", build: (s) => sentences([
+      pick(["Hay sitios que te arreglan el día, y este es uno de ellos.", "Necesitaba un rato para mí y lo encontré aquí.", "Venía de una temporada complicada y esto fue justo lo que necesitaba."]),
+      s.lo ? pick([`Lo de ${s.lo} fue casi la excusa.`, `Fui por ${s.lo}, pero me llevé mucho más.`]) : "Salí con otra cara, y no solo por fuera.",
+      resultado(s),
+      maybe(0.6) ? profesional(s) : "",
+      pick(["Gracias por el cariño con el que tratáis a cada persona.", `Gracias, ${marca()}, por hacerme sentir tan bien.`, "Gracias por cuidarme tanto."])
+    ])
+  },
+
+  // V06 · se dirige a quien está dudando
+  { id: "V06", build: (s) => sentences([
+      pick(["Si estás dudando, no lo pienses más.", "Si estás buscando dónde ir, te ahorro la búsqueda.", "A quien esté dudando, se lo digo claro: merece la pena."]),
+      s.lo ? `Yo fui por ${s.lo} y acerté de lleno.` : `Yo llevo tiempo yendo a ${marca()} y acerté de lleno.`,
+      profesional(s),
+      resultado(s),
+      pick(["Ya me contarás.", "No te vas a arrepentir."])
+    ])
+  },
+
+  // V07 · escéptica convertida
+  { id: "V07", build: (s) => sentences([
+      pick(["No soy de creer en estas cosas, lo confieso.", "Iba con bastante desconfianza, para qué negarlo.", "Reconozco que iba con mis dudas."]),
+      s.lo ? `Había oído hablar muy bien de su trabajo con ${s.lo}, pero nunca me había animado.` : "Había probado otros sitios y ninguno me había convencido.",
+      resultado(s),
+      profesional(s),
+      pick(["Tengo que reconocer que me han convencido.", "Ahora soy yo quien lo recomienda.", "Me han ganado."])
+    ])
+  },
+
+  // V08 · llegó con una tarjeta regalo
+  { id: "V08", build: (s) => sentences([
+      pick(["Me regalaron una tarjeta por mi cumpleaños y ha sido el mejor detalle en mucho tiempo.", "Fui gracias a una tarjeta regalo y ya he vuelto por mi cuenta.", "Una tarjeta regalo me llevó hasta aquí, y menos mal."]),
+      s.lo ? `La usé para ${s.lo}.` : "La usé para darme un capricho.",
+      resultado(s),
+      maybe(0.6) ? profesional(s) : "",
+      pick(["El trato fue tan cercano que me sentí como en casa.", "Me trataron con un mimo que no esperaba.", "La atención, cercanísima de principio a fin."])
+    ])
+  },
+
+  // V09 · poco tiempo, valora la organización
+  { id: "V09", build: (s) => sentences([
+      pick(["Trabajo muchas horas y valoro mucho que todo funcione como un reloj.", "Voy siempre con el tiempo justo, así que la puntualidad para mí es clave.", "Con mi horario, encontrar un centro que se adapte no es fácil."]),
+      pick(["Aquí cumplen con la hora y pedir cita por WhatsApp es comodísimo.", "Abren hasta las nueve entre semana y nunca me han hecho esperar.", "Son puntuales y no hay esperas."]),
+      s.lo ? `En cuanto a ${s.lo}, ${minus(resultado(s))}` : resultado(s),
+      maybe(0.5) ? profesional(s) : ""
+    ])
+  },
+
+  // V10 · compara con otros sitios
+  { id: "V10", build: (s) => sentences([
+      pick(["He probado varios centros en A Coruña y ninguno como este.", "Después de pasar por varios sitios, por fin encontré el mío.", "Vengo de otro centro y la diferencia es enorme."]),
+      s.lo ? pick([`Se nota sobre todo con ${s.lo}.`, `Donde más lo noto es con ${s.lo}.`]) : "Se nota en todo.",
+      profesional(s),
+      resultado(s),
+      pick(["Y el trato es otra cosa.", "El trato, además, no tiene comparación."]),
+      pick([`Me quedo en ${marca()}.`, "Aquí me quedo.", "No vuelvo a cambiar."])
+    ])
+  },
+
+  // V11 · informal y exclamativa
+  { id: "V11", build: (s) => sentences([
+      pick(["¡Qué maravilla de sitio!", "¡Me encanta este sitio!", "¡Qué gusto da venir aquí!"]),
+      s.lo ? `Lo de ${s.lo} es otro nivel.` : "Todo lo que me he hecho, de diez.",
+      resultado(s),
+      profesional(s),
+      pick(["Y encima el equipo es un amor.", "Y además son un encanto.", "Y el equipo, un encanto."]),
+      pick(["¡El local es una monada!", "¡Y qué bonito es el local!"]),
+      pick(["¡Volveré!", "¡Repetiré seguro!", "¡Mil gracias!"])
+    ])
+  },
+
+  // V12 · se fija en las instalaciones
+  { id: "V12", build: (s) => sentences([
+      pick(["Nada más entrar se nota el cuidado por los detalles.", "El centro es precioso, muy limpio y acogedor.", "Lo primero que me llamó la atención fue lo cuidado que está todo."]),
+      pick(["Se respira tranquilidad.", "Todo está impecable, desde la recepción hasta la cabina.", "Huele bien, suena música tranquila y todo está en orden."]),
+      s.lo ? `Me hice ${s.lo}: ${minus(resultado(s))}` : resultado(s),
+      profesional(s)
+    ])
+  },
+
+  // V13 · cuidarse como necesidad
+  { id: "V13", build: (s) => sentences([
+      pick(["Cuidarse no es un capricho, y aquí lo entienden muy bien.", "Dedicarte tiempo es importante, y aquí te lo ponen fácil.", "Hacía tiempo que no me dedicaba un rato, y lo necesitaba."]),
+      s.lo ? `Esta vez reservé para ${s.lo}.` : `Esta vez tocaba darme un capricho en ${marca()}.`,
+      resultado(s),
+      profesional(s),
+      pick(["Salí con la sensación de haberme cuidado de verdad.", "Me fui con otra energía.", "Fue un rato solo para mí, y se agradece."])
+    ])
+  },
+
+  // V14 · valora a los profesionales
+  { id: "V14", build: (s) => sentences([
+      pick(["Si algo tengo claro es que aquí saben lo que hacen.", "Lo que más valoro es la profesionalidad del equipo.", "Se nota que es gente formada y con mucha experiencia."]),
+      s.lo ? `Lo he comprobado con ${s.lo}.` : "Lo he comprobado en cada visita.",
+      profesional(s),
+      resultado(s),
+      pick(["Y todo con una cercanía que no es fácil de encontrar.", "Además, te lo explican todo con paciencia.", "Y sin perder nunca la sonrisa."])
+    ])
+  },
+
+  // V15 · lo cuenta en orden
+  { id: "V15", build: (s) => sentences([
+      s.lo ? `Empecé con ${s.lo} hace unos meses.` : `Empecé a ir a ${marca()} hace unos meses.`,
+      pick(["Desde la primera cita me explicaron todo con claridad.", "Desde el primer día me sentí en buenas manos.", "Desde la primera visita supe que me iba a quedar."]),
+      resultado(s),
+      profesional(s),
+      pick(["Hoy no me imagino ir a otro sitio.", "A día de hoy sigo yendo con las mismas ganas.", "Ya es mi sitio de confianza."])
+    ])
+  },
+
+  // V16 · con humor
+  { id: "V16", build: (s) => sentences([
+      pick(["Mi única queja es que el tiempo se pasa volando.", "Aviso: engancha.", "Lo malo es que ahora no sé ir a otro sitio."]),
+      s.lo ? `Fui por ${s.lo} y ya estoy mirando qué más probar.` : "Fui a probar y ya estoy mirando qué más hacerme.",
+      resultado(s),
+      profesional(s),
+      pick(["El equipo, un encanto de principio a fin.", "Y el trato, cercanísimo.", "Te tratan como si te conocieran de toda la vida."])
+    ])
+  },
+
+  // V17 · busca un centro y lo cuenta (palabra clave natural)
+  { id: "V17", build: (s) => sentences([
+      pick([`Buscaba un ${centroFinal()} y di con ${marca()}.`, `No es fácil encontrar un ${centro()} así.`, `Si buscas un ${centroFinal()}, apunta este nombre: ${marca()}.`]),
+      s.lo ? `Voy por ${s.lo} y no puedo estar más feliz.` : "Voy desde hace tiempo y no puedo estar más feliz.",
+      profesional(s),
+      resultado(s),
+      maybe(0.6) ? pick(["Además es facilísimo pedir cita.", "Y la atención, siempre amable."]) : ""
+    ])
+  },
+
+  // V18 · habla directamente al equipo
+  { id: "V18", build: (s) => sentences([
+      pick(["Solo puedo daros las gracias.", "Gracias por mimarme tanto en cada visita.", "Gracias al equipo por lo bien que me tratáis siempre."]),
+      s.lo ? `Con ${s.lo} habéis acertado de lleno.` : "Habéis acertado en todo lo que me he hecho.",
+      resultado(s),
+      pick(["Siempre me explicáis todo con mucha paciencia.", "Me encanta cómo cuidáis cada detalle.", "Nunca me habéis hecho esperar."]),
+      pick(["Se nota que os gusta lo que hacéis.", "Da gusto ver lo bien que trabajáis.", "Sois un encanto."]),
+      maybe(0.5) ? `¡Hasta la próxima, ${marca()}!` : ""
+    ])
+  },
+
+  // V19 · detallista
+  { id: "V19", build: (s) => sentences([
+      pick(["Lo que más me gusta es que nunca tienes la sensación de que vayan con prisa.", "Aprecio mucho que se tomen su tiempo contigo.", "Valoro mucho que te escuchen antes de hacer nada."]),
+      s.lo ? `Con ${s.lo} fue exactamente así.` : "Y así ha sido en cada visita.",
+      profesional(s),
+      resultado(s),
+      pick(["Al final, son los detalles los que marcan la diferencia.", "Por cosas así vuelvo siempre."])
+    ])
+  },
+
+  // V20 · valoración rotunda al principio
+  { id: "V20", build: (s) => sentences([
+      pick(["Sencillamente, de diez.", "Un acierto total.", "Diez de diez."]),
+      s.lo ? `Fui para ${s.lo} y salí feliz.` : "Salgo feliz cada vez que voy.",
+      resultado(s),
+      profesional(s),
+      pick(["Además, nunca me han hecho esperar.", "Y pedir cita es facilísimo."]),
+      pick(["Trato cercano, local impecable y profesionales de verdad.", "Cercanía, limpieza y buen hacer.", "Buen trato, buen ambiente y mejores manos."])
+    ])
+  },
+
+  // V21 · llegó por recomendación
+  { id: "V21", build: (s) => sentences([
+      pick(["Me lo recomendó una amiga y ahora soy yo quien lo recomienda.", "Una compañera de trabajo me habló de este sitio y no se equivocaba.", "Mi hermana llevaba tiempo insistiendo en que fuera."]),
+      s.lo ? `Probé ${s.lo} y entendí por qué.` : "Fui y entendí por qué.",
+      resultado(s),
+      profesional(s),
+      pick(["El trato es cercano, como de toda la vida.", "Te atienden con mucho cariño.", "Y el ambiente es de lo más agradable."])
+    ])
+  },
+
+  // V22 · antes y después
+  { id: "V22", build: (s) => sentences([
+      ...pick([
+        ["Antes iba de un sitio a otro sin acabar de quedarme a gusto.", "Hasta que llegué aquí."],
+        ["Antes me conformaba con cualquier sitio.", "Ahora sé lo que es un buen servicio."],
+        ["Antes pensaba que todos los centros eran iguales.", "Me equivocaba."]
+      ]),
+      s.lo ? `Lo noté desde la primera vez con ${s.lo}.` : "Lo noté desde la primera visita.",
+      resultado(s),
+      profesional(s)
+    ])
+  },
+
+  // V23 · formal, atención e instalaciones
+  { id: "V23", build: (s) => sentences([
+      pick(["Atención impecable de principio a fin.", "Excelente atención desde el momento de la reserva.", "El servicio recibido ha sido excelente."]),
+      s.lo ? `Acudí para ${s.lo} y superó mis expectativas.` : "Cada visita ha superado mis expectativas.",
+      profesional(s),
+      pick(["La cita se respetó con total puntualidad.", "Me atendieron a la hora exacta, sin esperas."]),
+      pick(["Las instalaciones están muy cuidadas y la puntualidad es exquisita.", "El centro está impecable y se respira un ambiente muy agradable.", "Destacaría también la limpieza y el orden del centro."])
+    ])
+  },
+
+  // V24 · cuenta la sensación al salir
+  { id: "V24", build: (s) => sentences([
+      pick(["Salí flotando.", "Salí como en una nube.", "Salí con una sonrisa de oreja a oreja."]),
+      s.lo ? `Lo de ${s.lo} me encantó: ${minus(resultado(s))}` : resultado(s),
+      profesional(s),
+      pick(["El ambiente invita a desconectar, con música suave y todo muy cuidado.", "Es de esos sitios donde la prisa se queda en la puerta.", "Desconectas nada más entrar."]),
+      pick(["Repetiré pronto.", "Volveré en cuanto pueda.", "Ya estoy deseando volver."])
+    ])
+  },
+
+  // V25 · marca al principio y palabra clave al final
+  { id: "V25", build: (s) => sentences([
+      pick([`Mi experiencia en ${marca()} ha sido inmejorable.`, `Todo lo que diga de ${marca()} es poco.`, `En ${marca()} lo hacen todo bien.`]),
+      profesional(s),
+      resultado(s),
+      maybe(0.7) ? pick(["El trato, además, es cercanísimo.", "Y te tratan con muchísimo cariño."]) : "",
+      s.busca ? `Si buscas ${s.busca}${donde()}, no lo dudes.` : `Si buscas un ${centroFinal()}, no lo dudes.`
+    ])
+  },
+
+  // V26 · organización y trato
+  { id: "V26", build: (s) => sentences([
+      pick(["Todo funciona como un reloj.", "Organización perfecta.", "Me encanta lo bien organizado que está todo."]),
+      pick(["Pides cita por WhatsApp, te contestan enseguida y a la hora acordada estás dentro.", "Te contestan rápido por WhatsApp y nunca he tenido que esperar.", "Nunca me han hecho esperar ni un minuto."]),
+      s.lo ? `Voy por ${s.lo}: ${minus(profesional(s))}` : profesional(s),
+      pick(["Y el trato, siempre cercano y con una sonrisa.", "Con un trato muy cercano, además.", "Y la atención es de lo más cálida."])
+    ])
+  },
+
+  // V27 · recién llegada a la ciudad o al barrio
+  { id: "V27", build: (s) => sentences([
+      pick(["Me mudé hace poco a A Coruña y necesitaba encontrar un sitio de confianza.", "Estuve un tiempo fuera y, al volver, lo primero fue pedir cita aquí.", "Cambié de barrio y, aun así, sigo viniendo."]),
+      s.lo ? `Empecé por ${s.lo}.` : "Empecé por algo sencillo.",
+      resultado(s),
+      profesional(s),
+      pick(["El trato, cercano desde el primer día.", "Y me han tratado de maravilla desde el principio."]),
+      pick(["Ya no busco más.", "Encontrado.", "Me quedo."])
+    ])
+  },
+
+  // V28 · tenía un evento
+  { id: "V28", build: (s) => sentences([
+      pick(["Tenía una boda y quería llegar a punto.", "Tenía un evento importante y no quería arriesgar.", "Antes de las vacaciones quise darme un capricho."]),
+      s.lo ? `Confié en ${marca()} para ${s.lo}.` : `Confié en ${marca()} y no me equivoqué.`,
+      resultado(s),
+      pick(["Me asesoraron muy bien y sin prisas.", "Me aconsejaron con mucho criterio.", "Todo salió tal y como esperaba."]),
+      maybe(0.8) ? pick(["El trato, encantador.", "Y el trato, inmejorable de principio a fin."]) : ""
+    ])
+  },
+
+  // V29 · da un consejo práctico
+  { id: "V29", build: (s) => sentences([
+      pick(["Lo único: conviene reservar con tiempo, porque se llena. Y se entiende.", "Un consejo: pide cita con antelación, que tienen mucha demanda. No me extraña.", "Si vas, reserva con tiempo, que suele estar lleno. Por algo será."]),
+      s.lo ? `Yo voy por ${s.lo}: ${minus(resultado(s))}` : resultado(s),
+      profesional(s),
+      pick(["El trato, encantador.", "Y te atienden con muchísimo cariño."])
+    ])
+  },
+
+  // V30 · valora la honestidad
+  { id: "V30", build: (s) => sentences([
+      pick(["Me gusta que no intenten venderte nada que no necesitas.", "Lo que más valoro es la honestidad: te dicen lo que te conviene y lo que no.", "Te aconsejan con sinceridad, sin presionar."]),
+      s.lo ? `Fui a informarme sobre ${s.lo} y me lo explicaron todo con calma.` : "Me explicaron todo con calma antes de empezar.",
+      resultado(s),
+      maybe(0.7) ? pick(["El trato es cercanísimo.", "Y te atienden con mucho cariño."]) : "",
+      pick(["Así da gusto.", "Así sí.", "Eso genera mucha confianza."])
+    ])
+  },
+
+  // V31 · coloquial, como quien comenta
+  { id: "V31", build: (s) => sentences([
+      pick(["Qué decir que no se haya dicho ya.", "Poco más puedo añadir a lo que ya cuentan otras reseñas.", "Ya lo dicen las demás opiniones, pero lo confirmo."]),
+      s.lo ? `Vine por ${s.lo} y todo perfecto.` : "Todo perfecto, como siempre.",
+      resultado(s),
+      profesional(s),
+      pick(["El centro, impecable.", "Todo muy limpio y cuidado."]),
+      pick(["Trato de diez.", "Y un trato de lo más cercano.", "Encima, un trato cercanísimo."])
+    ])
+  },
+
+  // V32 · su rato de desconexión, marca al despedirse
+  { id: "V32", build: (s) => sentences([
+      pick(["Es mi rato de desconexión de la semana.", "Cada visita es un pequeño respiro.", "Entrar ahí es como pulsar el botón de pausa."]),
+      s.lo ? `Ahora vengo por ${s.lo}: ${minus(resultado(s))}` : resultado(s),
+      profesional(s),
+      pick(["El trato es cálido y cercano.", "Te reciben siempre con una sonrisa.", "Te hacen sentir como en casa."]),
+      maybe(0.6) ? `Gracias, ${marca()}.` : ""
+    ])
+  }
+];
+
+/* --- Extensión ---
+   Una sola, intermedia: ni telegrama ni redacción. Acotada también para
+   que cualquier propuesta quepa entera en el cuadro, que tiene alto fijo. */
+const LENGTH_BAND = { min: 40, max: 60 };
+
+function bandDistance(words, band) {
+  if (words < band.min) return band.min - words;
+  if (words > band.max) return words - band.max;
+  return 0;
+}
+
+/* --- Filtros de calidad --- */
+
+/* Palabras largas que pueden repetirse sin que el texto suene a plantilla. */
+const PALABRAS_COMUNES = new Set([
+  "siempre", "además", "porque", "también", "cuando", "después", "durante",
+  "aunque", "cualquier", "mientras", "todavía", "bastante"
+]);
+
+function frasesDe(text) {
+  return (text.match(/[^.!?]+[.!?]+/g) || []).map(f => f.trim());
+}
+
+/** Lista de problemas de una propuesta (vacía si está bien). */
+function problemas(text, s) {
+  const lista = [];
+  if ((text.match(/Ooh La La|Ooh la lá/g) || []).length > 1) lista.push("marca");
+  if ((text.match(/centro de (estética|belleza)/g) || []).length > 1) lista.push("centro");
+
+  // "sesión a sesión" repite la palabra a propósito: no cuenta.
+  const palabras = text.toLowerCase().replace(/sesión a sesión/g, "").match(/[a-záéíóúüñ]{6,}/g) || [];
+  const vistas = new Set();
+  for (const p of palabras) {
+    if (PALABRAS_COMUNES.has(p)) continue;
+    if (vistas.has(p)) { lista.push("repite " + p); break; }
+    vistas.add(p);
+  }
+
+  const inicios = frasesDe(text).map(f => f.replace(/^[¡¿]/, "").split(/[\s,:]/)[0].toLowerCase());
+  if (new Set(inicios).size !== inicios.length) lista.push("inicio");
+
+  if (s.clave && !s.clave.test(text)) lista.push("sin servicio");
+  return lista;
+}
+
+/* Frases de las últimas propuestas: se evita volver a enseñarlas pronto,
+   también los comienzos y los cierres. Solo dura lo que dura la visita. */
+const FRASES_RECIENTES_MAX = 60;
+let frasesRecientes = [];
+
+function recordarFrases(text) {
+  frasesRecientes = frasesRecientes.concat(frasesDe(text)).slice(-FRASES_RECIENTES_MAX);
+}
+function frasesRepetidas(text) {
+  return frasesDe(text).filter(f => frasesRecientes.indexOf(f) !== -1).length;
+}
+
+/* Últimas voces usadas, para no repetir persona de cerca. */
+let vocesRecientes = [];
+
+function vocesDisponibles() {
+  const libres = VOCES.filter(v => vocesRecientes.indexOf(v.id) === -1);
+  return libres.length ? libres : VOCES;
+}
+function recordarVoz(id) {
+  vocesRecientes.push(id);
+  if (vocesRecientes.length > 8) vocesRecientes.shift();
+}
+
+/* --- Memoria de variantes ya vistas (localStorage) --- */
+const SEEN_KEY = "oohlala_reviews_seen_v2";
+const SEEN_MAX = 400;
+
+function hash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0;
+  return h.toString(36);
+}
+function readSeen() {
+  try { return JSON.parse(localStorage.getItem(SEEN_KEY)) || []; } catch (e) { return []; }
+}
+function writeSeen(list) {
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify(list.slice(-SEEN_MAX))); } catch (e) {}
+}
+
+let currentText = "";
+
+function barajar(lista) {
+  const a = lista.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* Una propuesta es mejor que otra si tiene menos problemas de calidad
+   (filtros y extensión) y, a igualdad, si repite menos frases recientes
+   o textos ya vistos. */
+function mejorQue(a, b) {
+  return !b || a.calidad < b.calidad || (a.calidad === b.calidad && a.repeticion < b.repeticion);
+}
+
+/** Mejor propuesta que consigue una voz en varios intentos. */
+function candidatoDe(voz, s, seenSet) {
+  let mejor = null;
+  for (let i = 0; i < 40; i++) {
+    const text = sinPuntoYComa(contract(voz.build(s).replace(/\s+/g, " ").trim()));
+    if (text === currentText) continue;
+
+    const c = {
+      text, id: voz.id,
+      calidad: problemas(text, s).length * 100 + bandDistance(countWords(text), LENGTH_BAND),
+      repeticion: frasesRepetidas(text) * 3 + (seenSet.has(hash(text)) ? 1 : 0)
+    };
+    if (mejorQue(c, mejor)) mejor = c;
+    if (mejor.calidad === 0 && mejor.repeticion === 0) break;
+  }
+  return mejor;
+}
+
+/** Generador local: primero se elige la voz y luego se le dan varios
+ *  intentos. Se acepta la primera voz que pasa los filtros sin repetir
+ *  más de una frase reciente: así todas salen con la misma frecuencia,
+ *  aunque a algunas les cueste más. */
+function generateReviewLocal() {
+  const s = SERVICIOS[servicioActual];
+  const seen = readSeen();
+  const seenSet = new Set(seen);
+  let mejor = null;
+
+  for (const voz of barajar(vocesDisponibles())) {
+    const c = candidatoDe(voz, s, seenSet);
+    if (c && mejorQue(c, mejor)) mejor = c;
+    if (mejor && mejor.calidad === 0 && mejor.repeticion <= 4) break;
+  }
+
+  recordarVoz(mejor.id);
+  recordarFrases(mejor.text);
+  seen.push(hash(mejor.text));
+  writeSeen(seen);
+  return mejor.text;
+}
+
+/** Punto único de sustitución: cambiar por generateReviewWithAI() en el futuro. */
+function generateReview() {
+  return generateReviewLocal();
+}
+
+/* ================================================================
+   3. INTERFAZ
+   ================================================================ */
+
+const reviewEl    = document.getElementById("review");
+const regenEl     = document.getElementById("regen");
+const ctaEl       = document.getElementById("cta");
+const statusEl    = document.getElementById("status");
+const wordCountEl = document.getElementById("wordCount");
+const revertBtn   = document.getElementById("revertBtn");
+const goStepEl    = document.getElementById("goStep");
+const ctaGoEl     = document.getElementById("ctaGo");
+const servicioEl  = document.getElementById("servicio");
+
+/* --- Los dos pasos del botón principal ---
+   Paso 1: copiar.  Paso 2: ir a Google.
+   Solo uno está visible a la vez, para que no haya duda de qué pulsar. */
+function mostrarPaso2() {
+  clearStatus();
+  ctaEl.hidden = true;
+  goStepEl.hidden = false;
+  ctaGoEl.href = urlDestino();
+  ctaGoEl.focus();
+}
+
+/* Se vuelve al paso 1 en cuanto el texto de pantalla deja de coincidir con
+   lo que hay copiado: otra propuesta, otra extensión o una edición a mano. */
+function volverAPaso1() {
+  if (ctaEl.hidden) {
+    goStepEl.hidden = true;
+    ctaEl.hidden = false;
+  }
+}
+
+let statusTimer = null;
+
+function clearStatus() {
+  clearTimeout(statusTimer);
+  statusEl.innerHTML = "";
+}
+
+function updateWordCount() {
+  const n = countWords(reviewEl.value);
+  wordCountEl.textContent = n === 1 ? "1 palabra" : n + " palabras";
+}
+
+/* El cuadro tiene alto fijo: al cambiar de propuesta solo se sustituye el
+   texto y se vuelve arriba. No se recalcula ninguna altura, así que el
+   diseño no da saltos entre servicios ni entre generaciones. */
+function setReview(text, animate) {
+  currentText = text;
+  revertBtn.classList.remove("show");
+  volverAPaso1();   // la propuesta cambia: lo copiado ya no vale
+
+  const apply = () => {
+    reviewEl.value = text;
+    reviewEl.scrollTop = 0;
+    updateWordCount();
+  };
+
+  if (!animate) { apply(); return; }
+
+  reviewEl.classList.add("swapping");
+  setTimeout(() => {
+    apply();
+    reviewEl.classList.remove("swapping");
+  }, 150);
+}
+
+/* Edición manual: solo se ofrece restablecer si el texto cambió de verdad. */
+reviewEl.addEventListener("input", () => {
+  updateWordCount();
+  revertBtn.classList.toggle("show", reviewEl.value.trim() !== currentText.trim());
+  volverAPaso1();   // si la edita, lo copiado se queda desfasado
+});
+
+revertBtn.addEventListener("click", () => setReview(currentText, true));
+
+/* --- Grupo de chips (radiogroup accesible) ---
+   Un único punto de tabulación y navegación con flechas, que es el patrón
+   que esperan lector de pantalla y teclado. */
+function setupChipGroup(groupEl, onChange) {
+  const chips = () => Array.from(groupEl.querySelectorAll(".chip"));
+
+  function select(btn, moveFocus) {
+    chips().forEach(c => {
+      const on = c === btn;
+      c.classList.toggle("active", on);
+      c.setAttribute("aria-checked", on ? "true" : "false");
+      c.tabIndex = on ? 0 : -1;
+    });
+    if (moveFocus) btn.focus();
+    onChange(btn.dataset.value);
+  }
+
+  groupEl.addEventListener("click", (e) => {
+    const btn = e.target.closest(".chip");
+    if (btn && !btn.classList.contains("active")) select(btn, false);
+  });
+
+  groupEl.addEventListener("keydown", (e) => {
+    const list = chips();
+    const i = list.indexOf(document.activeElement);
+    if (i < 0) return;
+    let j = null;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") j = (i + 1) % list.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = (i - 1 + list.length) % list.length;
+    else if (e.key === "Home") j = 0;
+    else if (e.key === "End") j = list.length - 1;
+    if (j === null) return;
+    e.preventDefault();
+    select(list[j], true);
+  });
+
+  chips().forEach(c => { c.tabIndex = c.classList.contains("active") ? 0 : -1; });
+}
+
+/* Centro: solo cambia el destino del botón. NO toca la reseña que hay
+   en pantalla ni genera otra: si el usuario ya la había editado, se respeta. */
+setupChipGroup(document.getElementById("ubicacionGroup"), (value) => {
+  ubicacionActual = value;
+  ctaEl.href = urlDestino();
+  ctaGoEl.href = urlDestino();
+});
+
+/* --- Servicio ---
+   Las opciones salen de SERVICIOS, con los mismos grupos que el menú de
+   la web. A diferencia del centro, cambiar de servicio SÍ genera otra
+   propuesta: el texto depende de él. */
+function poblarServicios() {
+  const grupos = {};
+  Object.keys(SERVICIOS).forEach(key => {
+    const s = SERVICIOS[key];
+    const opt = new Option(s.nombre, key);
+    if (!s.grupo) { servicioEl.appendChild(opt); return; }
+    if (!grupos[s.grupo]) {
+      grupos[s.grupo] = document.createElement("optgroup");
+      grupos[s.grupo].label = s.grupo;
+      servicioEl.appendChild(grupos[s.grupo]);
+    }
+    grupos[s.grupo].appendChild(opt);
+  });
+  servicioEl.value = SERVICIO_INICIAL;
+}
+
+servicioEl.addEventListener("change", () => {
+  servicioActual = servicioEl.value;
+  clearStatus();
+  setReview(generateReview(), true);
+});
+
+/* Generar otra propuesta */
+regenEl.addEventListener("click", () => {
+  clearStatus();
+  regenEl.classList.add("spin");
+  setTimeout(() => regenEl.classList.remove("spin"), 450);
+  setReview(generateReview(), true);
+});
+
+
+/* Si el navegador no deja copiar, se deja la reseña seleccionada para que
+   copiarla sea un solo gesto y se ofrece el enlace a Google, para no dejar
+   al usuario en un callejón sin salida. */
+function showCopyFailed() {
+  clearTimeout(statusTimer);
+  const salida = ' y <a href="' + urlDestino() + '">ábrela en Google</a>.';
+  statusEl.innerHTML =
+    '<div class="confirm error">' +
+      '<span class="confirm-title">Cópiala tú mismo</span>' +
+      '<span class="confirm-note">Tu navegador no ha permitido copiarla automáticamente. Ya está seleccionada: cópiala' + salida + '</span>' +
+    '</div>';
+  statusTimer = setTimeout(clearStatus, 15000);
+}
+
+/* Copia síncrona: funciona donde la Clipboard API está restringida
+   (http, iframes) y no rompe el gesto del usuario. */
+function copySync(text) {
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0;font-size:16px;";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Copia al portapapeles y confirma que ha terminado.
+ *  Primero la vía síncrona —se ejecuta dentro del gesto y funciona donde la
+ *  Clipboard API está restringida— y después la Clipboard API, que es la
+ *  que se espera con await. Devuelve true si alguna de las dos ha copiado. */
+async function copiarTexto(text) {
+  const sincrono = copySync(text);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      return sincrono;
+    }
+  }
+  return sincrono;
+}
+
+/* --- Botón principal: copiar la reseña y escribirla en Google ---
+   1. coge el texto visible (editado o no)
+   2. lo copia y espera a que la copia termine
+   3. navega al formulario de reseñas EN LA MISMA PESTAÑA
+
+   Se usa location.assign en lugar de abrir una pestaña nueva: una
+   navegación de primer nivel no la bloquea ningún antipopup, no deja
+   pestañas huérfanas y en iPhone es el comportamiento esperado.
+   La llamada al portapapeles arranca dentro del propio evento de clic,
+   que es lo que exige Safari. */
+ctaEl.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const text = reviewEl.value.trim() || currentText;
+
+  const copiado = await copiarTexto(text);
+
+  if (!copiado) {
+    // Sin texto en el portapapeles, llegar a Google no sirve de nada:
+    // se deja seleccionada para copiarla a mano y se ofrece el enlace.
+    reviewEl.focus();
+    reviewEl.select();
+    showCopyFailed();
+    return;
+  }
+  mostrarPaso2();
+});
+
+/* El botón de "Ir a Google" navega en la misma pestaña. El texto ya está
+   en el portapapeles desde el clic anterior. */
+ctaGoEl.addEventListener("click", (e) => {
+  e.preventDefault();
+  window.location.assign(urlDestino());
+});
+
+/* --- Arranque: ya hay una propuesta lista al cargar ---
+   El href real sirve de respaldo si el JS del clic fallara. */
+ctaEl.href = urlDestino();
+poblarServicios();
+setReview(generateReview(), false);
+</script>
+
+</body>
+</html>
